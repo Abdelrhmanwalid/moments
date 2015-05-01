@@ -1,10 +1,16 @@
 package abdelrhman.moments;
 
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.res.Configuration;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.AppCompatButton;
 import android.util.Log;
@@ -25,7 +31,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class CameraFragment extends Fragment{
+public class CameraFragment extends Fragment {
 
     AppCompatButton button;
     Camera camera;
@@ -36,17 +42,20 @@ public class CameraFragment extends Fragment{
     File temp;
     Date open, start, stop;
     int s = 0;
+    Context context;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragmetn_camera, container, false);
 
+        context = getActivity();
+
         isRecording = false;
 
         button = (AppCompatButton) rootView.findViewById(R.id.button);
 
-        if (!CameraHelper.checkCameraHardware(getActivity())) {
-            Toast.makeText(getActivity(), "error", Toast.LENGTH_SHORT).show();
+        if (!CameraHelper.checkCameraHardware(context)) {
+            Toast.makeText(context, "error", Toast.LENGTH_SHORT).show();
         }
 
         frameLayout = (FrameLayout) rootView.findViewById(R.id.camera_preview);
@@ -56,8 +65,6 @@ public class CameraFragment extends Fragment{
             public void onClick(View v) {
                 if (isRecording) {
                     mediaRecorder.stop();
-                    releaseMediaRecorder();
-                    releaseCamera();
                     isRecording = false;
                     button.setText("Start");
                     stop = new Date();
@@ -77,33 +84,47 @@ public class CameraFragment extends Fragment{
     @Override
     public void onStart() {
         super.onStart();
-        camera = CameraHelper.getInstenace();
-        Camera.Parameters parameters = camera.getParameters();
-        parameters.setRecordingHint(true);
-        camera.setParameters(parameters);
-        cameraPreview = new CameraPreview(getActivity(), camera);
-        frameLayout.addView(cameraPreview);
-//        temp = getTempFile();
-//        final ProgressDialog progressDialog = new ProgressDialog(this);
-//        progressDialog.setMessage("Please Wait");
-//        progressDialog.show();
-//        new Handler().postDelayed(
-//                new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        prepareMediaRecorder();
-//                        progressDialog.dismiss();
-//                    }
-//                }, 1000
-//        );
+        start();
+    }
+
+    void start() {
+        if (context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            try {
+                camera = Camera.open();
+            } catch (Exception e){
+
+            }
+            Camera.Parameters parameters = camera.getParameters();
+            parameters.setRecordingHint(true);
+            camera.setParameters(parameters);
+            cameraPreview = new CameraPreview(context, camera);
+            frameLayout.addView(cameraPreview);
+            temp = getTempFile();
+            final ProgressDialog progressDialog = new ProgressDialog(context);
+            progressDialog.setMessage("Please Wait");
+            progressDialog.show();
+            new Handler().postDelayed(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            prepareMediaRecorder();
+                            progressDialog.dismiss();
+                        }
+                    }, 1000
+            );
+        }
     }
 
     @Override
     public void onStop() {
         super.onStop();
-//        releaseMediaRecorder();
+        stop();
+    }
+
+    void stop() {
+        releaseMediaRecorder();
         releaseCamera();
-//        deleteFile(temp);
+        deleteFile(temp);
     }
 
     void getVideo() {
@@ -111,7 +132,7 @@ public class CameraFragment extends Fragment{
         long millis = Helper.getTime(open, start, stop, s);
         String time = Helper.getFormattedTime(millis);
 
-        FFmpeg ffmpeg = FFmpeg.getInstance(getActivity());
+        FFmpeg ffmpeg = FFmpeg.getInstance(context);
         String cmd = String.format("-i %s  -ss %s -c copy -async 1 %s", temp.toString(), time, getOutputMediaFile().toString());
         Log.d("cmd:", cmd);
         try {
@@ -140,7 +161,6 @@ public class CameraFragment extends Fragment{
             e.printStackTrace();
             releaseMediaRecorder();
         }
-
     }
 
     void releaseMediaRecorder() {
@@ -159,12 +179,11 @@ public class CameraFragment extends Fragment{
         }
     }
 
-    private static File getOutputMediaFile() {
+    private File getOutputMediaFile() {
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
 
-        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES), "MyCameraApp");
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), "Moments");
         // This location works best if you want the created images to be shared
         // between applications and persist after your app has been uninstalled.
 
@@ -184,13 +203,17 @@ public class CameraFragment extends Fragment{
         mediaFile = new File(mediaStorageDir.getPath() + File.separator +
                 "VID_" + timeStamp + ".mp4");
 
+        Intent mediaScannerIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        Uri fileContentUri = Uri.fromFile(mediaFile);
+        mediaScannerIntent.setData(fileContentUri);
+        context.sendBroadcast(mediaScannerIntent);
+
 
         return mediaFile;
     }
 
     File getTempFile() {
-        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES), "MyCameraApp");
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), "Moments");
         if (!mediaStorageDir.exists()) {
             if (!mediaStorageDir.mkdirs()) {
                 Log.d("MyCameraApp", "failed to create directory");
@@ -201,7 +224,7 @@ public class CameraFragment extends Fragment{
     }
 
     void deleteFile(File file) {
-        if (file.exists()) {
+        if (file != null && file.exists()) {
             file.delete();
         }
     }
