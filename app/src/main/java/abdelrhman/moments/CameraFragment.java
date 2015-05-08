@@ -1,18 +1,13 @@
 package abdelrhman.moments;
 
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.Intent;
-import android.content.res.Configuration;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
-import android.support.v7.widget.AppCompatButton;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,11 +15,14 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.FFmpegExecuteResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
+import com.melnykov.fab.FloatingActionButton;
+
+import net.steamcrafted.loadtoast.LoadToast;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,26 +31,41 @@ import java.util.Date;
 
 public class CameraFragment extends Fragment {
 
-    AppCompatButton button;
+    private static final String TAG = CameraFragment.class.getSimpleName();
+    FloatingActionButton fab;
     Camera camera;
     CameraPreview cameraPreview;
     FrameLayout frameLayout;
     MediaRecorder mediaRecorder;
     boolean isRecording;
-    File temp;
+    File temp, mediaFile;
     Date open, start, stop;
     int s = 0;
     Context context;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragmetn_camera, container, false);
-
+        final View rootView = inflater.inflate(R.layout.fragmetn_camera, container, false);
+        rootView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
         context = getActivity();
+        rootView.setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+            @Override
+            public void onSystemUiVisibilityChange(int visibility) {
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        rootView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
+                    }
+                },2000
+                );
+            }
+        });
 
         isRecording = false;
 
-        button = (AppCompatButton) rootView.findViewById(R.id.button);
+
+        fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
+        fab.setVisibility(View.GONE);
 
         if (!CameraHelper.checkCameraHardware(context)) {
             Toast.makeText(context, "error", Toast.LENGTH_SHORT).show();
@@ -60,65 +73,60 @@ public class CameraFragment extends Fragment {
 
         frameLayout = (FrameLayout) rootView.findViewById(R.id.camera_preview);
 
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (isRecording) {
-                    mediaRecorder.stop();
-                    isRecording = false;
-                    button.setText("Start");
-                    stop = new Date();
-                    getVideo();
-                } else {
-                    start = new Date();
-                    isRecording = true;
-                    button.setText("Stop");
-                    Log.d("save", "start");
-                }
-            }
-        });
+
+//        fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                if (isRecording) {
+//                    mediaRecorder.stop();
+//                    isRecording = false;
+////                    button.setText("Start");
+//                    stop = new Date();
+//                    getVideo();
+//                } else {
+//                    start = new Date();
+//                    isRecording = true;
+////                    button.setText("Stop");
+//                    Log.d("save", "start");
+//                }
+//            }
+//        });
 
         return rootView;
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onResume() {
+        super.onResume();
         start();
     }
 
     void start() {
-        if (context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            try {
-                camera = Camera.open();
-            } catch (Exception e){
-
-            }
-            Camera.Parameters parameters = camera.getParameters();
-            parameters.setRecordingHint(true);
-            camera.setParameters(parameters);
-            cameraPreview = new CameraPreview(context, camera);
-            frameLayout.addView(cameraPreview);
-            temp = getTempFile();
-            final ProgressDialog progressDialog = new ProgressDialog(context);
-            progressDialog.setMessage("Please Wait");
-            progressDialog.show();
-            new Handler().postDelayed(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            prepareMediaRecorder();
-                            progressDialog.dismiss();
-                        }
-                    }, 1000
-            );
+        if (camera != null) {
+            camera.startPreview();
+        } else {
+            camera = CameraHelper.getInstance();
+            camera.startPreview();
         }
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        stop();
+        Camera.Parameters parameters = camera.getParameters();
+        parameters.setRecordingHint(true);
+        camera.setParameters(parameters);
+        cameraPreview = new CameraPreview(context, camera);
+        frameLayout.addView(cameraPreview);
+        temp = getTempFile();
+        final LoadToast loadToast = new LoadToast(context);
+        loadToast.setText("Please Wait");
+        loadToast.show();
+        new Handler().postDelayed(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        prepareMediaRecorder();
+                        loadToast.success();
+                        fab.setVisibility(View.VISIBLE);
+                    }
+                }, 1000
+        );
     }
 
     void stop() {
@@ -133,11 +141,37 @@ public class CameraFragment extends Fragment {
         String time = Helper.getFormattedTime(millis);
 
         FFmpeg ffmpeg = FFmpeg.getInstance(context);
-        String cmd = String.format("-i %s  -ss %s -c copy -async 1 %s", temp.toString(), time, getOutputMediaFile().toString());
+        mediaFile = getOutputMediaFile();
+        String cmd = String.format("-i %s  -ss %s -c copy -async 1 %s", temp.toString(), time, mediaFile.toString());
         Log.d("cmd:", cmd);
         try {
             ffmpeg.loadBinary(new LoadBinaryResponseHandler());
-            ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler());
+            ffmpeg.execute(cmd, new FFmpegExecuteResponseHandler() {
+                @Override
+                public void onSuccess(String s) {
+                    Helper.scanMedia(getActivity(), mediaFile, false);
+                }
+
+                @Override
+                public void onProgress(String s) {
+
+                }
+
+                @Override
+                public void onFailure(String s) {
+
+                }
+
+                @Override
+                public void onStart() {
+
+                }
+
+                @Override
+                public void onFinish() {
+
+                }
+            });
         } catch (FFmpegNotSupportedException | FFmpegCommandAlreadyRunningException e) {
             e.printStackTrace();
         }
@@ -153,6 +187,7 @@ public class CameraFragment extends Fragment {
         mediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
         mediaRecorder.setOutputFile(temp.toString());
         mediaRecorder.setPreviewDisplay(cameraPreview.getHolder().getSurface());
+        mediaRecorder.setOrientationHint(MainActivity.orientation);
         try {
             mediaRecorder.prepare();
             mediaRecorder.start();
@@ -174,6 +209,7 @@ public class CameraFragment extends Fragment {
 
     void releaseCamera() {
         if (camera != null) {
+            camera.stopPreview();
             camera.release();
             camera = null;
         }
@@ -199,21 +235,14 @@ public class CameraFragment extends Fragment {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File mediaFile;
 
-
         mediaFile = new File(mediaStorageDir.getPath() + File.separator +
-                "VID_" + timeStamp + ".mp4");
-
-        Intent mediaScannerIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        Uri fileContentUri = Uri.fromFile(mediaFile);
-        mediaScannerIntent.setData(fileContentUri);
-        context.sendBroadcast(mediaScannerIntent);
-
+                "Moment_" + timeStamp + ".mp4");
 
         return mediaFile;
     }
 
     File getTempFile() {
-        File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), "Moments");
+        File mediaStorageDir = new File(getActivity().getExternalCacheDir(), "Moments");
         if (!mediaStorageDir.exists()) {
             if (!mediaStorageDir.mkdirs()) {
                 Log.d("MyCameraApp", "failed to create directory");
@@ -227,5 +256,11 @@ public class CameraFragment extends Fragment {
         if (file != null && file.exists()) {
             file.delete();
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        stop();
     }
 }

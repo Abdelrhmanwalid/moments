@@ -7,7 +7,6 @@
     android:textAppearance="?android:attr/textAppearanceListItemSmall"
     android:gravity="center_vertical"
     android:layout_gravity="center"
-    android:text="Testing"
     android:paddingLeft="16dp"
     android:paddingRight="16dp"
     android:textColor="#fff"

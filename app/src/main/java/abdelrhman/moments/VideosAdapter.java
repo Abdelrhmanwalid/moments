@@ -1,208 +1,177 @@
 package abdelrhman.moments;
 
 import android.content.Context;
-import android.database.Cursor;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
-import android.media.ThumbnailUtils;
-import android.provider.MediaStore;
+import android.net.Uri;
+import android.support.v7.app.AlertDialog;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ListView;
-import android.widget.RelativeLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.daimajia.swipe.SwipeLayout;
+import com.daimajia.swipe.adapters.BaseSwipeAdapter;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
-public class VideosAdapter extends ArrayAdapter {
+public class VideosAdapter extends BaseSwipeAdapter {
 
-    private LayoutInflater inflater;
-    private int layoutResource;
-    private ListView listView;
     Context context;
 
-    List<String> titles;
-    List<Bitmap> thumbnails;
-    List<String> durations;
-    Cursor cursor;
+    List<VideosFragment.Video> videos;
 
-    public VideosAdapter(Context context, int resource, Cursor cursor) {
-        super(context, resource);
-        layoutResource = resource;
-        inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.cursor = cursor;
+    public VideosAdapter(Context context,List<VideosFragment.Video> videos) {
+        super();
+        this.videos = videos;
         this.context = context;
-        titles = new ArrayList<>();
-        thumbnails = new ArrayList<>();
-        durations = new ArrayList<>();
-        extractCursor();
-    }
-
-    void extractCursor() {
-        int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-        int durationColumn = cursor.getColumnIndex(MediaStore.Video.Media.DURATION);
-
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                String filePath = cursor.getString(pathColumn);
-                File file = new File(filePath);
-                titles.add(file.getName());
-                durations.add(Helper.getFormattedTime(cursor.getLong(durationColumn)));
-                thumbnails.add(ThumbnailUtils.createVideoThumbnail(filePath, MediaStore.Video.Thumbnails.MINI_KIND));
-            }
-        }
-        cursor.close();
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-
-        View workingView;
-
-        if (convertView == null) {
-            workingView = inflater.inflate(layoutResource, null);
-        } else {
-            workingView = convertView;
-        }
-
-        ItemObjectHolder holder = getItemObjectHolder(workingView);
-        Bitmap thumbnail = thumbnails.get(position);
-        String title = titles.get(position);
-        String duration = durations.get(position);
-
-        holder.thumbnail.setImageBitmap(thumbnail);
-        holder.title.setText(title);
-        holder.duration.setText(duration);
-
-        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) holder.mainView.getLayoutParams();
-        params.rightMargin = 0;
-        params.leftMargin = 0;
-        holder.mainView.setLayoutParams(params);
-
-        return workingView;
+    public int getSwipeLayoutResourceId(int i) {
+        return R.id.swipe;
     }
 
-    private ItemObjectHolder getItemObjectHolder(View workingView) {
-        Object tag = workingView.getTag();
-        ItemObjectHolder holder;
-        if (tag == null || !(tag instanceof ItemObjectHolder)) {
-            holder = new ItemObjectHolder();
-            holder.mainView = (RelativeLayout) workingView.findViewById(R.id.mainView);
-            holder.deleteView = (RelativeLayout) workingView.findViewById(R.id.deleteview);
-            holder.shareView = (RelativeLayout) workingView.findViewById(R.id.shareview);
-            holder.thumbnail = (ImageView) workingView.findViewById(R.id.thumbnail);
-            holder.title = (TextView) workingView.findViewById(R.id.title);
-            holder.duration = (TextView) workingView.findViewById(R.id.duration);
-
-            workingView.setTag(holder);
-        } else {
-            holder = (ItemObjectHolder) tag;
-        }
-
-        return holder;
+    @Override
+    public View generateView(int i, ViewGroup viewGroup) {
+        return LayoutInflater.from(context).inflate(R.layout.moments_list_item, null);
     }
 
+    @Override
+    public void fillValues(final int position, View view) {
 
-    public static class ItemObjectHolder {
-        public RelativeLayout mainView;
-        public RelativeLayout deleteView;
-        public RelativeLayout shareView;
-        public ImageView thumbnail;
-        public TextView title;
-        public TextView duration;
+        final SwipeLayout swipeLayout = (SwipeLayout)view.findViewById(getSwipeLayoutResourceId(position));
+        ImageView thumbnail = (ImageView) view.findViewById(R.id.thumbnail);
+        final TextView title = (TextView) view.findViewById(R.id.title);
+        final TextView duration = (TextView) view.findViewById(R.id.duration);
+        final ImageView share = (ImageView) view.findViewById(R.id.share);
+        final LinearLayout options = (LinearLayout) view.findViewById(R.id.optionsview);
+        final ImageView rename = (ImageView) view.findViewById(R.id.rename);
+        final ImageView delete = (ImageView) view.findViewById(R.id.delete);
+        final ImageView play = (ImageView) view.findViewById(R.id.play);
 
-    }
+        Bitmap thumbnaild = videos.get(position).thumbnail;
+        final String titled = videos.get(position).title;
+        String durationd = videos.get(position).duration;
 
-    public void setListView(ListView view) {
-        listView = view;
-    }
+        thumbnail.setImageBitmap(thumbnaild);
+        title.setText(titled);
+        duration.setText(durationd);
 
-
-    public class SwipeDetector implements View.OnTouchListener {
-
-        private static final int MIN_DISTANCE = 300;
-        private static final int MIN_LOCK_DISTANCE = 30; // disallow motion intercept
-        private boolean motionInterceptDisallowed = false;
-        private float downX, upX;
-        private ItemObjectHolder holder;
-        private int position;
-
-        public SwipeDetector(ItemObjectHolder h, int pos) {
-            holder = h;
-            position = pos;
-        }
-
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN: {
-                    downX = event.getX();
-                    return true; // allow other events like Click to be processed
-                }
-
-                case MotionEvent.ACTION_MOVE: {
-                    upX = event.getX();
-                    float deltaX = downX - upX;
-
-                    if (Math.abs(deltaX) > MIN_LOCK_DISTANCE && listView != null && !motionInterceptDisallowed) {
-                        listView.requestDisallowInterceptTouchEvent(true);
-                        motionInterceptDisallowed = true;
-                    }
-
-                    if (deltaX > 0) {
-                        holder.deleteView.setVisibility(View.GONE);
-                    } else {
-                        // if first swiped left and then swiped right
-                        holder.deleteView.setVisibility(View.VISIBLE);
-                    }
-
-                    swipe(-(int) deltaX);
-                    return true;
-                }
-
-                case MotionEvent.ACTION_UP:
-                    upX = event.getX();
-                    float deltaX = upX - downX;
-                    if (Math.abs(deltaX) > MIN_DISTANCE) {
-                        // left or right
-                        swipeRemove();
-                    } else {
-                        swipe(0);
-                    }
-
-                    if (listView != null) {
-                        listView.requestDisallowInterceptTouchEvent(false);
-                        motionInterceptDisallowed = false;
-                    }
-
-                    holder.deleteView.setVisibility(View.VISIBLE);
-                    return true;
-
-                case MotionEvent.ACTION_CANCEL:
-                    holder.deleteView.setVisibility(View.VISIBLE);
-                    return false;
+        rename.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
             }
+        });
 
-            return true;
-        }
+        swipeLayout.addDrag(SwipeLayout.DragEdge.Right, options);
+        swipeLayout.setShowMode(SwipeLayout.ShowMode.PullOut);
+        share.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Uri videoURI = Uri.fromFile(new File(videos.get(position).path));
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setDataAndType(videoURI, "video/mp4");
+                intent.putExtra(Intent.EXTRA_STREAM, videoURI);
+                context.startActivity(intent);
+            }
+        });
 
-        private void swipe(int distance) {
-            View animationView = holder.mainView;
-            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) animationView.getLayoutParams();
-            params.rightMargin = -distance;
-            params.leftMargin = distance;
-            animationView.setLayoutParams(params);
-        }
+        rename.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final EditText name = new EditText(context);
+                name.setText(videos.get(position).title);
+                swipeLayout.close(true);
+                new AlertDialog.Builder(context)
+                        .setTitle("Rename Moment")
+                        .setMessage("Enter New Name")
+                        .setView(name)
+                        .setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String s = name.getText().toString();
+                                VideosFragment.Video video = videos.get(position);
+                                videos.remove(position);
+                                File file = new File(video.path);
+                                File newFile = new File(file.getParent() + File.separator + s + ".mp4");
+                                file.renameTo(newFile);
+                                Helper.scanMedia(context, file, true);
+                                Helper.scanMedia(context, newFile, false);
+                                video.path = newFile.toString();
+                                video.title = newFile.getName().replace(".mp4", "");
+                                videos.add(position, video);
+                                notifyDataSetChanged();
+                                Toast.makeText(context, file.getParent(), Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            }
+                        })
+                        .show();
+            }
+        });
+        
+        play.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Uri videoURI = Uri.fromFile(new File(videos.get(position).path));
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(videoURI, "video/mp4");
+                intent.putExtra(Intent.EXTRA_STREAM, videoURI);
+                context.startActivity(intent);
+            }
+        });
 
-        private void swipeRemove() {
-            remove(getItem(position));
-            notifyDataSetChanged();
-        }
+        delete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final VideosFragment.Video video = videos.get(position);
+                swipeLayout.close();
+                new AlertDialog.Builder(context)
+                        .setTitle("Delete Moment ?")
+                        .setMessage(video.title + " will be deleted from device")
+                        .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                File file = new File(video.path);
+                                Helper.scanMedia(context, file, true);
+                                file.delete();
+                                videos.remove(position);
+                                notifyDataSetChanged();
+                            }
+                        })
+                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+
+                            }
+                        }).show();
+            }
+        });
+
     }
 
+    @Override
+    public int getCount() {
+        return videos.size();
+    }
+
+    @Override
+    public Object getItem(int position) {
+        return null;
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
 }

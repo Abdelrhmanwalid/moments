@@ -15,7 +15,7 @@ public class CameraHelper {
         }
     }
 
-    public static Camera getInstenace(){
+    public static Camera getInstance(){
         Camera camera = null;
         try {
             camera = Camera.open();

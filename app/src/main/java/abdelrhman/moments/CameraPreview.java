@@ -28,49 +28,58 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 
     public void surfaceCreated(SurfaceHolder holder) {
         // The Surface has been created, now tell the camera where to draw the preview.
-        try {
-            mCamera.setPreviewDisplay(holder);
-            mCamera.startPreview();
-        } catch (IOException e) {
-            Log.d(TAG, "Error setting camera preview: " + e.getMessage());
+        if (mCamera != null) {
+            try {
+                mCamera.setPreviewDisplay(holder);
+                mCamera.startPreview();
+            } catch (IOException e) {
+                Log.d(TAG, "Error setting camera preview: " + e.getMessage());
+            }
         }
     }
 
     public void surfaceDestroyed(SurfaceHolder holder) {
         // empty. Take care of releasing the Camera preview in your activity.
+        if (mCamera != null) {
+
+            mCamera.release();
+            mCamera = null;
+        }
     }
 
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         // If your preview can change or rotate, take care of those events here.
         // Make sure to stop the preview before resizing or reformatting it.
+        if (mCamera != null) {
+            if (mHolder.getSurface() == null) {
+                // preview surface does not exist
+                return;
+            }
 
-        if (mHolder.getSurface() == null){
-            // preview surface does not exist
-            return;
-        }
+            // stop preview before making changes
+            try {
+                mCamera.stopPreview();
+            } catch (Exception e) {
+                // ignore: tried to stop a non-existent preview
+            }
 
-        // stop preview before making changes
-        try {
-            mCamera.stopPreview();
-        } catch (Exception e){
-            // ignore: tried to stop a non-existent preview
-        }
+            // set preview size and make any resize, rotate or
+            // reformatting changes here
 
-        // set preview size and make any resize, rotate or
-        // reformatting changes here
-
-        Camera.Parameters parameters = mCamera.getParameters();
-        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-        mCamera.setParameters(parameters);
+            mCamera.setDisplayOrientation(MainActivity.orientation);
+            Camera.Parameters parameters = mCamera.getParameters();
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+            mCamera.setParameters(parameters);
 
 
-        // start preview with new settings
-        try {
-            mCamera.setPreviewDisplay(mHolder);
-            mCamera.startPreview();
+            // start preview with new settings
+            try {
+                mCamera.setPreviewDisplay(mHolder);
+                mCamera.startPreview();
 
-        } catch (Exception e){
-            Log.d(TAG, "Error starting camera preview: " + e.getMessage());
+            } catch (Exception e) {
+                Log.d(TAG, "Error starting camera preview: " + e.getMessage());
+            }
         }
     }
 }
