@@ -13,7 +13,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.daimajia.swipe.SwipeLayout;
 import com.daimajia.swipe.adapters.BaseSwipeAdapter;
@@ -25,9 +24,9 @@ public class VideosAdapter extends BaseSwipeAdapter {
 
     Context context;
 
-    List<VideosFragment.Video> videos;
+    List<MainActivity.Video> videos;
 
-    public VideosAdapter(Context context,List<VideosFragment.Video> videos) {
+    public VideosAdapter(Context context,List<MainActivity.Video> videos) {
         super();
         this.videos = videos;
         this.context = context;
@@ -50,8 +49,8 @@ public class VideosAdapter extends BaseSwipeAdapter {
         ImageView thumbnail = (ImageView) view.findViewById(R.id.thumbnail);
         final TextView title = (TextView) view.findViewById(R.id.title);
         final TextView duration = (TextView) view.findViewById(R.id.duration);
-        final ImageView share = (ImageView) view.findViewById(R.id.share);
         final LinearLayout options = (LinearLayout) view.findViewById(R.id.optionsview);
+        final ImageView share = (ImageView) view.findViewById(R.id.share);
         final ImageView rename = (ImageView) view.findViewById(R.id.rename);
         final ImageView delete = (ImageView) view.findViewById(R.id.delete);
         final ImageView play = (ImageView) view.findViewById(R.id.play);
@@ -70,7 +69,8 @@ public class VideosAdapter extends BaseSwipeAdapter {
             }
         });
 
-        swipeLayout.addDrag(SwipeLayout.DragEdge.Right, options);
+        swipeLayout.addDrag(SwipeLayout.DragEdge.Left, options);
+        swipeLayout.setRightSwipeEnabled(false);
         swipeLayout.setShowMode(SwipeLayout.ShowMode.PullOut);
         share.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -89,7 +89,7 @@ public class VideosAdapter extends BaseSwipeAdapter {
                 final EditText name = new EditText(context);
                 name.setText(videos.get(position).title);
                 swipeLayout.close(true);
-                new AlertDialog.Builder(context)
+                new AlertDialog.Builder(context, R.style.dialog)
                         .setTitle("Rename Moment")
                         .setMessage("Enter New Name")
                         .setView(name)
@@ -97,7 +97,7 @@ public class VideosAdapter extends BaseSwipeAdapter {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 String s = name.getText().toString();
-                                VideosFragment.Video video = videos.get(position);
+                                MainActivity.Video video = videos.get(position);
                                 videos.remove(position);
                                 File file = new File(video.path);
                                 File newFile = new File(file.getParent() + File.separator + s + ".mp4");
@@ -108,7 +108,6 @@ public class VideosAdapter extends BaseSwipeAdapter {
                                 video.title = newFile.getName().replace(".mp4", "");
                                 videos.add(position, video);
                                 notifyDataSetChanged();
-                                Toast.makeText(context, file.getParent(), Toast.LENGTH_SHORT).show();
                             }
                         })
                         .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -134,9 +133,9 @@ public class VideosAdapter extends BaseSwipeAdapter {
         delete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final VideosFragment.Video video = videos.get(position);
+                final MainActivity.Video video = videos.get(position);
                 swipeLayout.close();
-                new AlertDialog.Builder(context)
+                new AlertDialog.Builder(context, R.style.dialog)
                         .setTitle("Delete Moment ?")
                         .setMessage(video.title + " will be deleted from device")
                         .setPositiveButton("Delete", new DialogInterface.OnClickListener() {

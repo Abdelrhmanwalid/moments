@@ -66,7 +66,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             // set preview size and make any resize, rotate or
             // reformatting changes here
 
-            mCamera.setDisplayOrientation(MainActivity.orientation);
+            mCamera.setDisplayOrientation(CameraActivity.orientation);
             Camera.Parameters parameters = mCamera.getParameters();
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
             mCamera.setParameters(parameters);

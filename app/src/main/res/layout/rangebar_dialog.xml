@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.appyvet.rangebar.RangeBar
+        xmlns:custom="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/rangebar"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        custom:rangeBar="false"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        custom:tickStart="0"
+        custom:tickInterval="1"
+        custom:tickEnd="60"
+        custom:pinRadius="8dp"
+        custom:connectingLineColor="@color/fab_material_red_500"
+        custom:textColor="@android:color/white"
+        custom:pinColor="@color/fab_material_red_900"
+        custom:tickColor="@android:color/transparent"
+        custom:barColor="@color/fab_material_red_500"
+        custom:selectorColor="@color/fab_material_red_900" />
+
+</LinearLayout>

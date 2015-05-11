@@ -1,194 +1,228 @@
 package abdelrhman.moments;
 
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.ThumbnailUtils;
+import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
+import android.os.Environment;
+import android.os.Handler;
+import android.provider.MediaStore;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.DisplayMetrics;
-import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuItem;
-import android.view.Surface;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import com.appyvet.rangebar.RangeBar;
+import com.nanotasks.BackgroundWork;
+import com.nanotasks.Completion;
+import com.nanotasks.Tasks;
+import com.software.shell.fab.ActionButton;
+
+import net.steamcrafted.loadtoast.LoadToast;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    DrawerLayout drawerLayout;
-    ListView drawerList;
-    public static int orientation;
-    private ActionBarDrawerToggle drawerToggle;
+
+    List<Video> videos;
+    ActionButton fab;
+    TextView emptyList;
+    ListView listView;
+    SharedPreferences.Editor editor;
+    int seconds;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ArrayAdapter<String> mAdapter;
-        setupDrawer();
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setHomeButtonEnabled(true);
-        drawerList = (ListView) findViewById(R.id.navList);
-        String[] Array = {"New Moment", "My Moments", "Settings"};
-        mAdapter = new ArrayAdapter<>(this, R.layout.drawer_list_item, Array);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        drawerList.setAdapter(mAdapter);
-        drawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        SharedPreferences sharedPreferences = this.getPreferences(MODE_PRIVATE);
+        editor = sharedPreferences.edit();
+
+        seconds = sharedPreferences.getInt("sec", 0);
+
+        fab = (ActionButton) findViewById(R.id.fab_moments);
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                chooseItem(position);
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, CameraActivity.class);
+                intent.putExtra("sec", seconds);
+                startActivity(intent);
             }
         });
-
-        if (savedInstanceState == null) {
-            chooseItem(1);
-            drawerList.setItemChecked(1, true);
-        }
-
-    }
-
-    private void setupDrawer() {
-        drawerToggle = new ActionBarDrawerToggle(this, drawerLayout,
-                R.string.drawer_open, R.string.drawer_close);
-        drawerToggle.setDrawerIndicatorEnabled(true);
-        drawerLayout.setDrawerListener(drawerToggle);
-
+        emptyList = (TextView) findViewById(R.id.moments_empty);
+        listView = (ListView) findViewById(R.id.moments_list);
     }
 
     @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        drawerToggle.syncState();
+    protected void onStart() {
+        super.onStart();
+        videos = null;
+        getVideos();
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        drawerToggle.onConfigurationChanged(newConfig);
-    }
+    private void getVideos() {
+        if (videos == null) {
+            final LoadToast loadToast = new LoadToast(this);
+            loadToast.setText("Loading");
+            loadToast.show();
+            Tasks.executeInBackground(this, new BackgroundWork<VideosAdapter>() {
+                @Override
+                public VideosAdapter doInBackground() throws Exception {
+                    File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), "Moments");
+                    if (!mediaStorageDir.exists()) {
+                        if (!mediaStorageDir.mkdirs()) {
+                            return null;
+                        }
+                    }
+                    Uri uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                    String condition = MediaStore.Video.Media.DATA + " like?";
+                    String[] selectionArguments = new String[]{"%" + mediaStorageDir.toString() + "%"};
+                    String sortOrder = MediaStore.Video.Media.DATE_TAKEN + " DESC";
+                    String[] projection = {MediaStore.Images.Media.DATA, MediaStore.Video.Media.DURATION,
+                            MediaStore.Video.Media._ID};
+                    Cursor cursor = getContentResolver().query(uri, projection, condition, selectionArguments, sortOrder);
+                    videos = new ArrayList<>();
 
-    void chooseItem(int position) {
-        drawerList.setItemChecked(position, true);
-        drawerLayout.closeDrawer(drawerList);
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        switch (position) {
-            case 0: {
-                getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                getSupportActionBar().hide();
-                setRequestedOrientation(getScreenOrientation());
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.container, new CameraFragment())
-                        .commit();
-                break;
-            }
-            case 1: {
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                getSupportActionBar().show();
-                setRequestedOrientation(getScreenOrientation());
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.container, new VideosFragment())
-                        .commit();
-                break;
-            }
-            case 2:{
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                getSupportActionBar().show();
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.container, new SettingsFragment())
-                        .commit();
-                break;
-            }
-            default:
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-        }
-    }
+                    int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                    int durationColumn = cursor.getColumnIndex(MediaStore.Video.Media.DURATION);
 
-    private int getScreenOrientation() {
-        int rotation = getWindowManager().getDefaultDisplay().getRotation();
-        DisplayMetrics dm = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(dm);
-        int width = dm.widthPixels;
-        int height = dm.heightPixels;
-        int orientation;
-        // if the device's natural orientation is portrait:
-        if ((rotation == Surface.ROTATION_0
-                || rotation == Surface.ROTATION_180) && height > width ||
-                (rotation == Surface.ROTATION_90
-                        || rotation == Surface.ROTATION_270) && width > height) {
-            switch (rotation) {
-                case Surface.ROTATION_0:
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-                    MainActivity.orientation = 90;
-                    break;
-                case Surface.ROTATION_90:
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-                    MainActivity.orientation = 0;
-                    break;
-                case Surface.ROTATION_180:
-                    orientation =
-                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
-                    MainActivity.orientation = 270;
-                    break;
-                case Surface.ROTATION_270:
-                    orientation =
-                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
-                    MainActivity.orientation = 180;
-                    break;
-                default:
-                    Log.e(TAG, "Unknown screen orientation. Defaulting to " +
-                            "portrait.");
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-                    MainActivity.orientation = 90;
-                    break;
-            }
-        }
-        // if the device's natural orientation is landscape or if the device
-        // is square:
-        else {
-            switch (rotation) {
-                case Surface.ROTATION_0:
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-                    MainActivity.orientation = 0;
-                    break;
-                case Surface.ROTATION_90:
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-                    MainActivity.orientation = 90;
-                    break;
-                case Surface.ROTATION_180:
-                    orientation =
-                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
-                    MainActivity.orientation = 180;
-                    break;
-                case Surface.ROTATION_270:
-                    orientation =
-                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
-                    MainActivity.orientation = 270;
-                    break;
-                default:
-                    Log.e(TAG, "Unknown screen orientation. Defaulting to " +
-                            "landscape.");
-                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-                    MainActivity.orientation = 0;
-                    break;
-            }
-        }
+                    while (cursor.moveToNext()) {
+                        String filePath = cursor.getString(pathColumn);
+                        File file = new File(filePath);
+                        Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(filePath,
+                                MediaStore.Video.Thumbnails.MINI_KIND);
+                        if (bitmap != null)
+                            bitmap = Bitmap.createScaledBitmap(bitmap, 256, 192, true);
+                        Video video = new Video(
+                                file.getName().replace(".mp4", ""),
+                                Helper.getFormattedTime(cursor.getLong(durationColumn)),
+                                filePath,
+                                bitmap
+                        );
+                        videos.add(video);
+                    }
 
-        return orientation;
+                    VideosAdapter videosAdapter = new VideosAdapter(MainActivity.this, videos);
+
+                    cursor.close();
+                    return videosAdapter;
+                }
+            }, new Completion<VideosAdapter>() {
+                @Override
+                public void onSuccess(Context context, VideosAdapter videosAdapter) {
+                    listView.setAdapter(videosAdapter);
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (videos.size() == 0) {
+                                emptyList.setVisibility(View.VISIBLE);
+                                loadToast.error();
+                            } else {
+                                emptyList.setVisibility(View.GONE);
+                                loadToast.success();
+                            }
+                        }
+                    }, 500);
+                    emptyList.setText("No Moments Found");
+                }
+
+                @Override
+                public void onError(Context context, Exception e) {
+                    emptyList.setText("Error Loading Moments");
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            loadToast.error();
+                        }
+                    }, 500);
+                }
+            });
+
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (drawerToggle.onOptionsItemSelected(item)) {
-            return true;
+        if (item.getItemId() == R.id.action_seconds) {
+            LayoutInflater layoutInflater = LayoutInflater.from(this);
+            LinearLayout linearLayout = (LinearLayout) layoutInflater.inflate(R.layout.rangebar_dialog, null);
+            final RangeBar rangeBar = (RangeBar) linearLayout.findViewById(R.id.rangebar);
+            rangeBar.setSeekPinByValue(seconds);
+            String s;
+            if (seconds == 1) {
+                s = "Second";
+            } else {
+                s = "Seconds";
+            }
+            final AlertDialog alertDialog = new AlertDialog.Builder(this, R.style.dialog)
+                    .setMessage(String.format("Pre Record %d %s", seconds, s))
+                    .setView(linearLayout)
+                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            seconds = rangeBar.getRightIndex();
+                            editor.putInt("sec", seconds);
+                            editor.commit();
+                        }
+                    })
+                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                        }
+                    })
+                    .create();
+            alertDialog.show();
+            rangeBar.setOnRangeBarChangeListener(new RangeBar.OnRangeBarChangeListener() {
+                @Override
+                public void onRangeChangeListener(RangeBar rangeBar, int i, int i1, String s, String s1) {
+                    if (i1 == 1) {
+                        s = "Second";
+                    } else {
+                        s = "Seconds";
+                    }
+                    alertDialog.setMessage(String.format("Pre Record %d %s", i1, s));
+                }
+            });
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    public class Video {
+        String title;
+        String duration;
+        String path;
+        Bitmap thumbnail;
+
+        public Video(String title, String duration, String path, Bitmap thumbnail) {
+            this.title = title;
+            this.duration = duration;
+            this.path = path;
+            this.thumbnail = thumbnail;
+        }
     }
 }

@@ -1,33 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:fab="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingLeft="8dp"
-    android:paddingRight="8dp">
+    android:id="@+id/camera_preview">
 
-    <ListView android:id="@+id/moments_list"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:drawSelectorOnTop="false"/>
-
-    <TextView android:id="@+id/moments_empty"
+    <Chronometer
+        android:id="@+id/recorded"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone"/>
+        android:textAppearance="?android:textAppearanceListItemSmall"
+        android:visibility="invisible"
+        android:layout_gravity="left|top"
+        android:layout_margin="10dp"
+        android:textColor="@color/fab_material_red_500"/>
+
 
     <com.software.shell.fab.ActionButton
-        android:id="@+id/fab_moments"
+        android:id="@+id/fab"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|right"
+        android:layout_height="match_parent"
+        android:layout_gravity="center|right"
         android:layout_margin="8dp"
-        fab:image="@drawable/fab_plus_icon"
+        android:visibility="invisible"
         fab:button_color="@color/fab_material_red_500"
         fab:button_colorPressed="@color/fab_material_red_900"
         fab:shadow_color="@color/fab_material_red_900"
         fab:show_animation="@anim/fab_jump_from_down"
         fab:hide_animation="@anim/fab_jump_to_down"/>
-
 </FrameLayout>
