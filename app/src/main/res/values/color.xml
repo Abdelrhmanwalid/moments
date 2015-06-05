@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fab_material_light_blue_500">#1565C0</color>
+    <color name="fab_material_light_blue_900">#0D47A1</color>
+    <color name="PrimaryDark">#0D47A1</color>
+    <color name="fab_material_blue_400">#42A5F5</color>
+</resources>

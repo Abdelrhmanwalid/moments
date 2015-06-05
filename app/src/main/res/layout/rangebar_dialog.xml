@@ -15,11 +15,11 @@
         custom:tickInterval="1"
         custom:tickEnd="60"
         custom:pinRadius="8dp"
-        custom:connectingLineColor="@color/fab_material_red_500"
+        custom:connectingLineColor="@color/fab_material_blue_400"
         custom:textColor="@android:color/white"
-        custom:pinColor="@color/fab_material_red_900"
+        custom:pinColor="@color/fab_material_light_blue_500"
         custom:tickColor="@android:color/transparent"
-        custom:barColor="@color/fab_material_red_500"
-        custom:selectorColor="@color/fab_material_red_900" />
+        custom:barColor="@color/fab_material_blue_400"
+        custom:selectorColor="@color/fab_material_light_blue_500" />
 
 </LinearLayout>

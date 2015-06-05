@@ -13,7 +13,7 @@
         android:visibility="invisible"
         android:layout_gravity="left|top"
         android:layout_margin="10dp"
-        android:textColor="@color/fab_material_red_500"/>
+        android:textColor="@color/fab_material_light_blue_500"/>
 
 
     <com.software.shell.fab.ActionButton
@@ -23,9 +23,9 @@
         android:layout_gravity="center|right"
         android:layout_margin="8dp"
         android:visibility="invisible"
-        fab:button_color="@color/fab_material_red_500"
-        fab:button_colorPressed="@color/fab_material_red_900"
-        fab:shadow_color="@color/fab_material_red_900"
+        fab:button_color="@color/fab_material_light_blue_500"
+        fab:button_colorPressed="@color/fab_material_light_blue_900"
+        fab:shadow_color="@color/fab_material_light_blue_900"
         fab:show_animation="@anim/fab_jump_from_down"
         fab:hide_animation="@anim/fab_jump_to_down"/>
 </FrameLayout>
